@@ -94,12 +94,19 @@
           (client))
       (client request))))
 
+(defn abortable-async-map [f c]
+  (let [new-c (async/map f [c])
+        xhr (@core/pending-requests c)]
+    (swap! core/pending-requests dissoc c)
+    (swap! core/pending-requests assoc new-c xhr)
+    new-c))
+
 (defn wrap-edn-response
   "Decode application/edn responses."
   [client]
   (fn [request]
     (-> #(decode-body % read-string "application/edn" (:request-method request))
-        (async/map [(client request)]))))
+        (abortable-async-map (client request)))))
 
 (defn wrap-accept
   [client & [accept]]
@@ -149,7 +156,7 @@
           transit-decode #(util/transit-decode % decoding decoding-opts)]
 
       (-> #(decode-body % transit-decode "application/transit+json" (:request-method request))
-          (async/map [(client request)])))))
+          (abortable-async-map (client request))))))
 
 (defn wrap-json-params
   "Encode :json-params in the `request` :body and set the appropriate
@@ -168,7 +175,7 @@
   [client]
   (fn [request]
     (-> #(decode-body % util/json-decode "application/json" (:request-method request))
-        (async/map [(client request)]))))
+        (abortable-async-map (client request)))))
 
 (defn wrap-query-params [client]
   (fn [{:keys [query-params] :as req}]

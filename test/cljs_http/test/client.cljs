@@ -140,3 +140,12 @@
         (let [resp (async/<! request)]
           (is (= resp nil)))
         (done)))))
+
+(deftest test-abortable-async-map
+  (let [request (core/request {:request-method :get :url "http://localhost/"})
+        request2 (client/request {:request-method :get :url "http://localhost/"})]
+    (is (@core/pending-requests request))
+    (is (@core/pending-requests request2))))
+
+
+
